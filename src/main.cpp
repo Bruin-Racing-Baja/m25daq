@@ -126,17 +126,46 @@ void loop() {
     // Update display every gps interval
     if (millis() - lastGPSUpdate > GPS_UPDATE_INTERVAL) {
         lastGPSUpdate = millis();
-
+        float roll = 0;
+        float lateralAccel = 0;
         // IMU: read accelerometer
         float x = 0, y = 0, z = 0;
         if (bno08x.getSensorEvent(&sensorValue)) {
-            x = sensorValue.un.accelerometer.x;
-            y = sensorValue.un.accelerometer.y;
-            z = sensorValue.un.accelerometer.z;
-        }
+          switch (sensorValue.sensorId) {
+            case SH2_CAL_ACCEL: {
+              float ax = sensorValue.un.accelerometer.x;
+              float ay = sensorValue.un.accelerometer.y;
+              //lateral accel in car reference frame az
+              float az = sensorValue.un.accelerometer.z;
+              lateralAccel = az;
+              break;
+            }
+            case SH2_ROTATION_VECTOR: {
+              float qw = sensorValue.un.rotationVector.real;
+              float qx = sensorValue.un.rotationVector.i;
+              float qy = sensorValue.un.rotationVector.j;
+              float qz = sensorValue.un.rotationVector.k;
 
-        // GPS: get coordinates
+              roll  = ((atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy))) * 180.0) / PI;
+              break;
+            }
+          }
+        }
         
+        float rollGradient = (fabs(lateralAccel) > 0.01) ? roll / lateralAccel : 0.0;
+        
+        //test hall sensor
+        hall = analogRead(A1);
+        float voltage = ((hall / 1023.0) * 3.3);
+        float deg = (voltage / 3.3) * 360.0;
+      
+        
+
+        // Display on OLED
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.setTextSize(1);
+        display.println("Data!");
         if (gpsFix) {
             display.print("Lat: "); display.println(gpsLat, 6);
             display.print("Lon: "); display.println(gpsLon, 6);
@@ -146,23 +175,25 @@ void loop() {
         } else {
             display.println("Waiting for GPS fix...");
         }
-
-        // Display on OLED
-        display.clearDisplay();
-        display.setCursor(0, 0);
-        display.setTextSize(1);
-        display.println("IMU + GPS Data!");
-        display.print("x: "); display.println(x, 2);
-        display.print("y: "); display.println(y, 2);
-        display.print("z: "); display.println(z, 2);
+        display.print("Roll: "); 
+        display.println(roll, 1);
+        display.print("az: "); 
+        display.println(lateralAccel, 2);
+        display.print("RG: "); 
+        display.println(rollGradient, 2);
+        display.print("Deg: ");
+        display.println(deg);
         display.display();
-    }
 
-    //test hall sensor
-    hall = analogRead  (A1);
-    Serial.print("value: ");
-    Serial.println(hall);
-    display.print("value: ");
-    display.println(hall);
-    display.display();
+        //Serial
+        Serial.print("Time (ms): "); Serial.print(millis());
+        Serial.print("Roll: ");
+        Serial.print(roll);
+        Serial.print(" az"); 
+        Serial.print(lateralAccel);
+        Serial.print(" RGrad: "); 
+        Serial.print(rollGradient);
+        Serial.print(" Hall: "); 
+        Serial.println(deg);
+    }
 }
