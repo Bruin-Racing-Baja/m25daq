@@ -30,6 +30,7 @@ float gpsLat = 0.0;
 float gpsLon = 0.0;
 bool gpsFix = false;
 int hall;
+int shock_pot;
 
 // Convert NMEA lat/lon to decimal degrees
 float convertToDecimal(float nmeaCoord, String direction) {
@@ -145,8 +146,12 @@ void loop() {
               float qx = sensorValue.un.rotationVector.i;
               float qy = sensorValue.un.rotationVector.j;
               float qz = sensorValue.un.rotationVector.k;
-
+              Serial.print(qw);
+              Serial.print(qx);
+              Serial.print(qy);
+              Serial.println(qz);
               roll  = ((atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy))) * 180.0) / PI;
+              Serial.println(roll);
               break;
             }
           }
@@ -156,8 +161,12 @@ void loop() {
         
         //test hall sensor
         hall = analogRead(A1);
-        float voltage = ((hall / 1023.0) * 3.3);
-        float deg = (voltage / 3.3) * 360.0;
+        float voltage_h = ((hall / 1023.0) * 3.3);
+        float deg = (voltage_h / 3.3) * 360.0;
+        
+        shock_pot = analogRead(A2);
+        float voltage_sp = ((shock_pot / 1023.0) * 3.3);
+        float distance = (voltage_sp / 3.3) * 250;
       
         
 
@@ -182,18 +191,18 @@ void loop() {
         display.print("RG: "); 
         display.println(rollGradient, 2);
         display.print("Deg: ");
-        display.println(deg);
+        display.println(hall);
         display.display();
 
         //Serial
         Serial.print("Time (ms): "); Serial.print(millis());
-        Serial.print("Roll: ");
+        Serial.print(" Roll: ");
         Serial.print(roll);
         Serial.print(" az"); 
         Serial.print(lateralAccel);
         Serial.print(" RGrad: "); 
         Serial.print(rollGradient);
-        Serial.print(" Hall: "); 
-        Serial.println(deg);
+        Serial.print(" Shock Pot: "); 
+        Serial.println(voltage_sp);
     }
 }
