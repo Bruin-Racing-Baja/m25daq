@@ -5,6 +5,11 @@
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_GPS.h>
 #include <USBHost_t36.h>
+#include <can_bus.h>
+#include <constants.h>
+#include <can_ids.h>
+#include <queue>
+
 
 // OLED setup
 #define SCREEN_WIDTH 128
@@ -31,6 +36,34 @@ float gpsLon = 0.0;
 bool gpsFix = false;
 int hall;
 int shock_pot;
+int cycle_count = 0;
+
+Can_Bus bus;
+CAN_message_t create_can_msg(u32 func_id, u32 node_id,  u32 sync_val, float data){
+  CAN_message_t msg;
+  u8 buf[8];
+  msg.buf[0] = static_cast<u8>(func_id);
+  msg.buf[1] = static_cast<u8>(sync_val);
+  msg.buf[6] = 1;
+  msg.id = (node_id << 5) | 0x1F;
+  msg.len = 7;
+  memcpy(msg.buf + 2, &data, 4);
+  msg.flags.remote = false;
+  return msg;
+}
+CAN_message_t create_can_msg(u32 func_id, u32 node_id, u32 sync_val, uint32_t data){
+  CAN_message_t msg;
+  u8 buf[8];
+  msg.buf[0] = static_cast<u8>(func_id);
+  msg.buf[1] = static_cast<u8>(sync_val);
+  msg.buf[6] = 0;
+  msg.id = (node_id << 5) | 0x1F;
+  msg.len = 7;
+  memcpy(msg.buf + 2, &data, 4);
+  msg.flags.remote = false;
+  return msg;
+}
+
 
 // Convert NMEA lat/lon to decimal degrees
 float convertToDecimal(float nmeaCoord, String direction) {
@@ -102,6 +135,9 @@ void setup() {
     // Initialize GPS
     myusb.begin();
     
+    //InitializE Can Bus
+    bus.setup();
+
     display.clearDisplay();
     display.setCursor(10, 20);
     display.println("IMU + GPS Ready!");
@@ -180,6 +216,8 @@ void loop() {
             display.print("Lon: "); display.println(gpsLon, 6);
             Serial.print(gpsLat, 6);
             Serial.println(gpsLon, 6);
+            bus.send_command(create_can_msg(CAN_GPS_LAT, RASP_NODE_ID, cycle_count, gpsLat));
+            bus.send_command(create_can_msg(CAN_GPS_LONG, RASP_NODE_ID, cycle_count, gpsLon));
             
         } else {
             display.println("Waiting for GPS fix...");
@@ -195,14 +233,21 @@ void loop() {
         display.display();
 
         //Serial
-        Serial.print("Time (ms): "); Serial.print(millis());
+        Serial.print("Time (ms): "); 
+        Serial.print(millis());
         Serial.print(" Roll: ");
         Serial.print(roll);
+        bus.send_command(create_can_msg(CAN_ROLL, RASP_NODE_ID, cycle_count, roll));
         Serial.print(" az"); 
         Serial.print(lateralAccel);
+        bus.send_command(create_can_msg(CAN_LATERAL_ACCEL, RASP_NODE_ID, cycle_count, lateralAccel));
         Serial.print(" RGrad: "); 
         Serial.print(rollGradient);
+        bus.send_command(create_can_msg(CAN_ROLL_GRADIENT, RASP_NODE_ID, cycle_count, rollGradient));
         Serial.print(" Shock Pot: "); 
         Serial.println(voltage_sp);
+        bus.send_command(create_can_msg(CAN_VOLTAGE_SP, RASP_NODE_ID, cycle_count, rollGradient));
+
+        cycle_count++;
     }
 }
