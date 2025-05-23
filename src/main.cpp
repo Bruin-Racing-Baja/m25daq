@@ -22,7 +22,7 @@ sh2_SensorValue_t sensorValue;
 // GPS USB setup
 USBHost myusb;
 USBSerial_BigBuffer gpsSerial(myusb);
-#define GPS_UPDATE_INTERVAL 1000
+#define GPS_UPDATE_INTERVAL 100
 uint32_t lastGPSUpdate = 0;
 
 String lastLine = "";
@@ -31,6 +31,15 @@ float gpsLon = 0.0;
 bool gpsFix = false;
 int hall;
 int shock_pot;
+float roll = 0;
+float pitch = 0;
+float yaw = 0;
+float lateralAccel = 0;
+float ax = 0;
+float ay = 0;
+float az = 0;
+float linAccel = 0;
+float gyx = 0;
 
 // Convert NMEA lat/lon to decimal degrees
 float convertToDecimal(float nmeaCoord, String direction) {
@@ -98,6 +107,8 @@ void setup() {
     }
     bno08x.enableReport(SH2_CAL_ACCEL, 10000);
     bno08x.enableReport(SH2_ROTATION_VECTOR, 10000);
+    bno08x.enableReport(SH2_LINEAR_ACCELERATION, 10000);
+    bno08x.enableReport(SH2_GYROSCOPE_CALIBRATED, 10000);
 
     // Initialize GPS
     myusb.begin();
@@ -127,18 +138,16 @@ void loop() {
     // Update display every gps interval
     if (millis() - lastGPSUpdate > GPS_UPDATE_INTERVAL) {
         lastGPSUpdate = millis();
-        float roll = 0;
-        float lateralAccel = 0;
+        
         // IMU: read accelerometer
-        float x = 0, y = 0, z = 0;
-        if (bno08x.getSensorEvent(&sensorValue)) {
+        while (bno08x.getSensorEvent(&sensorValue)) {
           switch (sensorValue.sensorId) {
             case SH2_CAL_ACCEL: {
-              float ax = sensorValue.un.accelerometer.x;
-              float ay = sensorValue.un.accelerometer.y;
+              ax = sensorValue.un.accelerometer.x;
+              ay = sensorValue.un.accelerometer.y;
               //lateral accel in car reference frame az
-              float az = sensorValue.un.accelerometer.z;
-              lateralAccel = az;
+              az = sensorValue.un.accelerometer.z;
+              lateralAccel = ax;
               break;
             }
             case SH2_ROTATION_VECTOR: {
@@ -146,18 +155,26 @@ void loop() {
               float qx = sensorValue.un.rotationVector.i;
               float qy = sensorValue.un.rotationVector.j;
               float qz = sensorValue.un.rotationVector.k;
-              Serial.print(qw);
-              Serial.print(qx);
-              Serial.print(qy);
-              Serial.println(qz);
+            //   Serial.print(qw);
+            //   Serial.print(qx);
+            //   Serial.print(qy);
+            //   Serial.println(qz);
               roll  = ((atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy))) * 180.0) / PI;
-              Serial.println(roll);
+              pitch = asin(2.0 * (qw * qy - qz * qx)) * 180.0 / PI;
+              yaw   = ((atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))) * 180.0) / PI;
+              //Serial.println(roll);
               break;
+            }
+            case SH2_LINEAR_ACCELERATION: {
+                linAccel = sensorValue.un.linearAcceleration.z;
+            }
+            case SH2_GYROSCOPE_CALIBRATED: {
+                gyx = sensorValue.un.gyroscope.x;
             }
           }
         }
         
-        float rollGradient = (fabs(lateralAccel) > 0.01) ? roll / lateralAccel : 0.0;
+        float rollGradient = (fabs(lateralAccel) > 0.01) ? pitch / lateralAccel : 0.0;
         
         //test hall sensor
         hall = analogRead(A1);
@@ -191,18 +208,30 @@ void loop() {
         display.print("RG: "); 
         display.println(rollGradient, 2);
         display.print("Deg: ");
-        display.println(hall);
+        display.println(deg);
         display.display();
 
         //Serial
         Serial.print("Time (ms): "); Serial.print(millis());
         Serial.print(" Roll: ");
         Serial.print(roll);
-        Serial.print(" az"); 
-        Serial.print(lateralAccel);
+        Serial.print(" Pitch: ");
+        Serial.print(pitch);
+        Serial.print(" Yaw: ");
+        Serial.print(yaw);
+        Serial.print(" lat accel "); 
+        Serial.print(ax);
+        Serial.print(" ay "); 
+        Serial.print(ay);
+        Serial.print(" az "); 
+        Serial.print(az);
+        Serial.print(" linz "); 
+        Serial.print(linAccel);
         Serial.print(" RGrad: "); 
         Serial.print(rollGradient);
-        Serial.print(" Shock Pot: "); 
-        Serial.println(voltage_sp);
+        // Serial.print(" Shock Pot: "); 
+        // Serial.println(distance);
+        Serial.print(" gy x: ");
+        Serial.println(gyx);
     }
 }
