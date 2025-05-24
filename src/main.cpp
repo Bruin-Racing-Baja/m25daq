@@ -27,6 +27,10 @@ USBSerial_BigBuffer gpsSerial(myusb);
 #define GPS_UPDATE_INTERVAL 100
 uint32_t lastGPSUpdate = 0;
 
+#define LED1_PIN 4
+#define LED2_PIN 9
+#define LED3_PIN 10
+
 String lastLine = "";
 float gpsLat = 0.0;
 float gpsLon = 0.0;
@@ -44,6 +48,9 @@ float linAccel = 0;
 float gyx = 0;
 time_t get_teensy3_time() { return Teensy3Clock.get(); }
 char log_name[32];
+bool sdFail = false;
+bool logFail = false;
+bool imuFail = false;
 
 File logFile;
 // Convert NMEA lat/lon to decimal degrees
@@ -90,7 +97,7 @@ void setup() {
     
     // Initialize I2C for IMU
     Wire2.begin();
-
+    pinMode(LED1_PIN, OUTPUT);
     setSyncProvider(get_teensy3_time);
     bool rtc_set = timeStatus() == timeSet && year() > 2021;
     
@@ -105,6 +112,9 @@ void setup() {
 
     if(!SD.begin(BUILTIN_SDCARD)) {
         Serial.println("SD failed!");
+        while (true) {
+            sdFail = true;
+        }
     }
     
     // if(!logFile) {
@@ -116,10 +126,13 @@ void setup() {
     if (!SD.exists(log_name)) {
         logFile = SD.open(log_name, FILE_WRITE);
     if (logFile) {
-        logFile.println("Timestamp,Roll,Pitch,Yaw,LatAccel,Ay,Az,LinAccel,RGrad,GyX");
+        logFile.println("Timestamp,CarPitch,CarRoll,CarYaw,LatAccel,Ay,ForwardAccel,LinAccel,RGrad,ShockPot,GyX");
         logFile.close();
     } else {
         Serial.println("Failed to create new log file");
+        while (true) {
+            logFail = true;
+        }
     }
 }
 
@@ -140,6 +153,9 @@ void setup() {
         Serial.println("BNO085 initialization failed!");
         display.println("IMU Error!");
         display.display();
+        while (true) {
+            imuFail = true;
+        }
         while (true);
     }
     bno08x.enableReport(SH2_CAL_ACCEL, 10000);
@@ -159,6 +175,24 @@ void setup() {
 
 
 void loop() {
+    if (sdFail) {
+        digitalWrite(LED1_PIN, HIGH);
+        delay(250);  
+        digitalWrite(LED1_PIN, LOW);
+        delay(250);  
+    }
+    if (logFail) {
+        digitalWrite(LED2_PIN, HIGH);
+        delay(250);  
+        digitalWrite(LED2_PIN, LOW);
+        delay(250);  
+    }
+    if (imuFail) {
+        digitalWrite(LED3_PIN, HIGH);
+        delay(250);  
+        digitalWrite(LED3_PIN, LOW);
+        delay(250);  
+    }
     myusb.Task();
     // read from usb GPS
     while (gpsSerial.available()) {
@@ -254,7 +288,8 @@ void loop() {
         char timestamp[32];
         sprintf(timestamp, "%04d-%02d-%02d %02d:%02d:%02d.%03lu",
         year(), month(), day(), hour(), minute(), second(), millis() % 1000);
-        Serial.println(timestamp);
+        Serial.print(timestamp);
+        //Serial.println(micros());
         Serial.print(" Roll: ");
         Serial.print(roll);
         Serial.print(" Pitch: ");
@@ -271,8 +306,8 @@ void loop() {
         Serial.print(linAccel);
         Serial.print(" RGrad: "); 
         Serial.print(rollGradient);
-        // Serial.print(" Shock Pot: "); 
-        // Serial.println(distance);
+        Serial.print(" Shock Pot: "); 
+        Serial.println(distance);
         Serial.print(" gy x: ");
         Serial.println(gyx);
 
@@ -288,7 +323,7 @@ void loop() {
             logFile.print(az); logFile.print(",");
             logFile.print(linAccel); logFile.print(",");
             logFile.print(rollGradient); logFile.print(",");
-            // logFile.print(distance); logFile.print(",");
+            logFile.print(distance); logFile.print(",");
             logFile.println(gyx);
             logFile.close();  
         } else {
