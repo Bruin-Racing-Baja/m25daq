@@ -52,10 +52,14 @@ const u32 CAN_LEFT_FRONT_WHEEL_RPM = 43;
 const u32 CAN_RIGHT_FRONT_WHEEL_RPM = 44;
 const u32 CAN_REAL_TIME = 45;
 const u32 CAN_ROLL = 46;
-const u32 CAN_LATERAL_ACCEL = 47;
-const u32 CAN_ROLL_GRADIENT = 48;
-const u32 CAN_VOLTAGE_SP = 49;
-const u32 CAN_GPS_LAT = 50;
-const u32 CAN_GPS_LONG = 51;
+const u32 CAN_PITCH = 47;
+const u32 CAN_YAW = 48;
+const u32 CAN_AX = 49;
+const u32 CAN_AY = 50;
+const u32 CAN_AZ = 51;
+const u32 CAN_LIN_ACCEL = 51;
+const u32 CAN_ROLL_GRADIENT = 51;
+const u32 CAN_DISTANCE = 51;
+const u32 CAN_GYX = 51;
 
 #endif
