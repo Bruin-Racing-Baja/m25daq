@@ -5,7 +5,9 @@
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_GPS.h>
 #include <USBHost_t36.h>
-
+#include <TimeLib.h>
+#include <SD.h>
+#include <SPI.h>
 // OLED setup
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -40,7 +42,10 @@ float ay = 0;
 float az = 0;
 float linAccel = 0;
 float gyx = 0;
+time_t get_teensy3_time() { return Teensy3Clock.get(); }
+char log_name[32];
 
+File logFile;
 // Convert NMEA lat/lon to decimal degrees
 float convertToDecimal(float nmeaCoord, String direction) {
     int degrees = int(nmeaCoord / 100);
@@ -82,9 +87,41 @@ void processNMEALine(String line) {
 void setup() {
     delay(2000);  
     Serial.begin(115200);
-
+    
     // Initialize I2C for IMU
     Wire2.begin();
+
+    setSyncProvider(get_teensy3_time);
+    bool rtc_set = timeStatus() == timeSet && year() > 2021;
+    
+    
+    if (!rtc_set) {
+        Serial.println("Warning: Failed to sync time with RTC");
+        logFile = SD.open("log_unknown_time.csv", FILE_WRITE);
+    } else {
+        sprintf(log_name, "log_%04d-%02d-%02d_%02d-%02d-%02d.csv", year(), month(), day(), hour(), minute(), second());
+        logFile = SD.open(log_name, FILE_WRITE);
+    }
+
+    if(!SD.begin(BUILTIN_SDCARD)) {
+        Serial.println("SD failed!");
+    }
+    
+    // if(!logFile) {
+    //     Serial.println("File open failed!");
+    //     Serial.println(logFile);
+    // }
+    // logFile.println("Timestamp,Roll,Pitch,Yaw,LatAccel,Ay,Az,LinAccel,RGrad,GyX");
+    // logFile.close();
+    if (!SD.exists(log_name)) {
+        logFile = SD.open(log_name, FILE_WRITE);
+    if (logFile) {
+        logFile.println("Timestamp,Roll,Pitch,Yaw,LatAccel,Ay,Az,LinAccel,RGrad,GyX");
+        logFile.close();
+    } else {
+        Serial.println("Failed to create new log file");
+    }
+}
 
     // Initialize OLED
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -203,7 +240,7 @@ void loop() {
         }
         display.print("Roll: "); 
         display.println(roll, 1);
-        display.print("az: "); 
+        display.print("lat acc: "); 
         display.println(lateralAccel, 2);
         display.print("RG: "); 
         display.println(rollGradient, 2);
@@ -212,7 +249,12 @@ void loop() {
         display.display();
 
         //Serial
-        Serial.print("Time (ms): "); Serial.print(millis());
+        // Serial.print("Time (ms): "); 
+        // Serial.print(millis());
+        char timestamp[32];
+        sprintf(timestamp, "%04d-%02d-%02d %02d:%02d:%02d.%03lu",
+        year(), month(), day(), hour(), minute(), second(), millis() % 1000);
+        Serial.println(timestamp);
         Serial.print(" Roll: ");
         Serial.print(roll);
         Serial.print(" Pitch: ");
@@ -233,5 +275,25 @@ void loop() {
         // Serial.println(distance);
         Serial.print(" gy x: ");
         Serial.println(gyx);
+
+        logFile = SD.open(log_name, FILE_WRITE);
+        if (logFile) {
+            //logFile.print(timestamp); logFile.print(",");
+            logFile.print(timestamp); logFile.print(",");
+            logFile.print(roll); logFile.print(",");
+            logFile.print(pitch); logFile.print(",");
+            logFile.print(yaw); logFile.print(",");
+            logFile.print(ax); logFile.print(",");
+            logFile.print(ay); logFile.print(",");
+            logFile.print(az); logFile.print(",");
+            logFile.print(linAccel); logFile.print(",");
+            logFile.print(rollGradient); logFile.print(",");
+            // logFile.print(distance); logFile.print(",");
+            logFile.println(gyx);
+            logFile.close();  
+        } else {
+            Serial.println("Failed to write to log");
+        }
+
     }
 }
