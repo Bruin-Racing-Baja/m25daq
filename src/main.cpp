@@ -5,11 +5,6 @@
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_GPS.h>
 #include <USBHost_t36.h>
-#include <can_bus.h>
-#include <constants.h>
-#include <can_ids.h>
-#include <queue>
-
 #include <TimeLib.h>
 #include <SD.h>
 #include <SPI.h>
@@ -57,35 +52,7 @@ bool sdFail = false;
 bool logFail = false;
 bool imuFail = false;
 
-File logFile;int cycle_count = 0;
-
-Can_Bus bus;
-CAN_message_t create_can_msg(u32 func_id, u32 node_id,  u32 sync_val, float data){
-  CAN_message_t msg;
-  u8 buf[8];
-  msg.buf[0] = static_cast<u8>(func_id);
-  msg.buf[1] = static_cast<u8>(sync_val);
-  msg.buf[6] = 1;
-  msg.id = (node_id << 5) | 0x1F;
-  msg.len = 7;
-  memcpy(msg.buf + 2, &data, 4);
-  msg.flags.remote = false;
-  return msg;
-}
-CAN_message_t create_can_msg(u32 func_id, u32 node_id, u32 sync_val, uint32_t data){
-  CAN_message_t msg;
-  u8 buf[8];
-  msg.buf[0] = static_cast<u8>(func_id);
-  msg.buf[1] = static_cast<u8>(sync_val);
-  msg.buf[6] = 0;
-  msg.id = (node_id << 5) | 0x1F;
-  msg.len = 7;
-  memcpy(msg.buf + 2, &data, 4);
-  msg.flags.remote = false;
-  return msg;
-}
-
-
+File logFile;
 // Convert NMEA lat/lon to decimal degrees
 float convertToDecimal(float nmeaCoord, String direction) {
     int degrees = int(nmeaCoord / 100);
@@ -145,8 +112,13 @@ void setup() {
 
     if(!SD.begin(BUILTIN_SDCARD)) {
         Serial.println("SD failed!");
-        while (true) {
-            sdFail = true;
+        // display.println("SD failed!");
+        // display.display();
+        while(true){
+            digitalWrite(LED1_PIN, HIGH);
+            delay(250);
+            digitalWrite(LED1_PIN, LOW);
+            delay(250);
         }
     }
     
@@ -163,9 +135,14 @@ void setup() {
         logFile.close();
     } else {
         Serial.println("Failed to create new log file");
-        while (true) {
-            logFail = true;
+        while(true){
+            digitalWrite(LED2_PIN, HIGH);
+            delay(250);
+            digitalWrite(LED2_PIN, LOW);
+            delay(250);
         }
+        logFail = true;
+        while(true);
     }
 }
 
@@ -186,9 +163,13 @@ void setup() {
         Serial.println("BNO085 initialization failed!");
         display.println("IMU Error!");
         display.display();
-        while (true) {
-            imuFail = true;
+        while(true){
+            digitalWrite(LED3_PIN, HIGH);
+            delay(250);
+            digitalWrite(LED3_PIN, LOW);
+            delay(250);
         }
+        imuFail = true;
         while (true);
     }
     bno08x.enableReport(SH2_CAL_ACCEL, 10000);
@@ -199,9 +180,6 @@ void setup() {
     // Initialize GPS
     myusb.begin();
     
-    //InitializE Can Bus
-    bus.setup();
-
     display.clearDisplay();
     display.setCursor(10, 20);
     display.println("IMU + GPS Ready!");
@@ -211,24 +189,24 @@ void setup() {
 
 
 void loop() {
-    if (sdFail) {
-        digitalWrite(LED1_PIN, HIGH);
-        delay(250);  
-        digitalWrite(LED1_PIN, LOW);
-        delay(250);  
-    }
-    if (logFail) {
-        digitalWrite(LED2_PIN, HIGH);
-        delay(250);  
-        digitalWrite(LED2_PIN, LOW);
-        delay(250);  
-    }
-    if (imuFail) {
-        digitalWrite(LED3_PIN, HIGH);
-        delay(250);  
-        digitalWrite(LED3_PIN, LOW);
-        delay(250);  
-    }
+    // if (sdFail) {
+    //     digitalWrite(LED1_PIN, HIGH);
+    //     delay(250);  
+    //     digitalWrite(LED1_PIN, LOW);
+    //     delay(250);  
+    // }
+    // if (logFail) {
+    //     digitalWrite(LED2_PIN, HIGH);
+    //     delay(250);  
+    //     digitalWrite(LED2_PIN, LOW);
+    //     delay(250);  
+    // }
+    // if (imuFail) {
+    //     digitalWrite(LED3_PIN, HIGH);
+    //     delay(250);  
+    //     digitalWrite(LED3_PIN, LOW);
+    //     delay(250);  
+    // }
     myusb.Task();
     // read from usb GPS
     while (gpsSerial.available()) {
@@ -283,11 +261,12 @@ void loop() {
         
         float rollGradient = (fabs(lateralAccel) > 0.01) ? pitch / lateralAccel : 0.0;
         
-        //test hall sensor
+        // hall sensor
         hall = analogRead(A1);
         float voltage_h = ((hall / 1023.0) * 3.3);
         float deg = (voltage_h / 3.3) * 360.0;
         
+        //shock pot
         shock_pot = analogRead(A2);
         float voltage_sp = ((shock_pot / 1023.0) * 3.3);
         float distance = (voltage_sp / 3.3) * 250;
@@ -304,7 +283,6 @@ void loop() {
             display.print("Lon: "); display.println(gpsLon, 6);
             Serial.print(gpsLat, 6);
             Serial.println(gpsLon, 6);
-            
             
         } else {
             display.println("Waiting for GPS fix...");
@@ -367,18 +345,5 @@ void loop() {
             Serial.println("Failed to write to log");
         }
 
-        bus.send_command(create_can_msg(CAN_REAL_TIME, RASP_NODE_ID, cycle_count, (u32) now()));
-        bus.send_command(create_can_msg(CAN_ROLL, RASP_NODE_ID, cycle_count, roll));
-        bus.send_command(create_can_msg(CAN_PITCH, RASP_NODE_ID, cycle_count, pitch));
-        bus.send_command(create_can_msg(CAN_YAW, RASP_NODE_ID, cycle_count, yaw));
-        bus.send_command(create_can_msg(CAN_AX, RASP_NODE_ID, cycle_count, ax));
-        bus.send_command(create_can_msg(CAN_AY, RASP_NODE_ID, cycle_count, ay));
-        bus.send_command(create_can_msg(CAN_AZ, RASP_NODE_ID, cycle_count, az));
-        bus.send_command(create_can_msg(CAN_LIN_ACCEL, RASP_NODE_ID, cycle_count, linAccel));
-        bus.send_command(create_can_msg(CAN_ROLL_GRADIENT, RASP_NODE_ID, cycle_count, rollGradient));
-        bus.send_command(create_can_msg(CAN_DISTANCE, RASP_NODE_ID, cycle_count, distance));
-        bus.send_command(create_can_msg(CAN_GYX, RASP_NODE_ID, cycle_count, gyx));
-
-        cycle_count++;
     }
 }
