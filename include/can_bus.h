@@ -18,5 +18,7 @@ class Can_Bus
 };
 constexpr u8 ODRIVE_NODE_ID = 0x3;
 constexpr u8 RASP_NODE_ID = 0x4;     
+constexpr u32 FLEXCAN_BAUD_RATE = 1000000;  
+constexpr u32 FLEXCAN_MAX_MAILBOX = 63;   
     
 #endif

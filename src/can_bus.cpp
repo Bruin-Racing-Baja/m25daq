@@ -1,4 +1,3 @@
-#include "constants.h"
 #include <FlexCAN_T4.h>
 #include <can_bus.h>
 #include <string>
@@ -12,7 +11,7 @@ Can_Bus::Can_Bus()
 void Can_Bus::setup()
 {
   flexcan_bus.begin();
-  flexcan_bus.setBaudRate(1000000);
+  flexcan_bus.setBaudRate(FLEXCAN_BAUD_RATE);
   flexcan_bus.setMaxMB(FLEXCAN_MAX_MAILBOX);
   flexcan_bus.enableFIFO();
   flexcan_bus.enableFIFOInterrupt();

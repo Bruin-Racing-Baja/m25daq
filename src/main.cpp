@@ -6,10 +6,8 @@
 #include <Adafruit_GPS.h>
 #include <USBHost_t36.h>
 #include <can_bus.h>
-#include <constants.h>
 #include <can_ids.h>
 #include <queue>
-
 #include <TimeLib.h>
 #include <SD.h>
 #include <SPI.h>
@@ -62,7 +60,6 @@ File logFile;int cycle_count = 0;
 Can_Bus bus;
 CAN_message_t create_can_msg(u32 func_id, u32 node_id,  u32 sync_val, float data){
   CAN_message_t msg;
-  u8 buf[8];
   msg.buf[0] = static_cast<u8>(func_id);
   msg.buf[1] = static_cast<u8>(sync_val);
   msg.buf[6] = 3;
@@ -74,7 +71,6 @@ CAN_message_t create_can_msg(u32 func_id, u32 node_id,  u32 sync_val, float data
 }
 CAN_message_t create_can_msg(u32 func_id, u32 node_id, u32 sync_val, uint32_t data){
   CAN_message_t msg;
-  u8 buf[8];
   msg.buf[0] = static_cast<u8>(func_id);
   msg.buf[1] = static_cast<u8>(sync_val);
   msg.buf[6] = 2;
