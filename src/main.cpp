@@ -65,7 +65,7 @@ CAN_message_t create_can_msg(u32 func_id, u32 node_id,  u32 sync_val, float data
   u8 buf[8];
   msg.buf[0] = static_cast<u8>(func_id);
   msg.buf[1] = static_cast<u8>(sync_val);
-  msg.buf[6] = 1;
+  msg.buf[6] = 3;
   msg.id = (node_id << 5) | 0x1F;
   msg.len = 7;
   memcpy(msg.buf + 2, &data, 4);
@@ -77,7 +77,7 @@ CAN_message_t create_can_msg(u32 func_id, u32 node_id, u32 sync_val, uint32_t da
   u8 buf[8];
   msg.buf[0] = static_cast<u8>(func_id);
   msg.buf[1] = static_cast<u8>(sync_val);
-  msg.buf[6] = 0;
+  msg.buf[6] = 2;
   msg.id = (node_id << 5) | 0x1F;
   msg.len = 7;
   memcpy(msg.buf + 2, &data, 4);

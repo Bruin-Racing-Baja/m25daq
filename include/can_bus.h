@@ -14,7 +14,7 @@ class Can_Bus
         static void setup();
     
     private:
-        static FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> flexcan_bus;
+        static FlexCAN_T4<CAN3, RX_SIZE_256, TX_SIZE_16> flexcan_bus;
 };
 constexpr u8 ODRIVE_NODE_ID = 0x3;
 constexpr u8 RASP_NODE_ID = 0x4;     

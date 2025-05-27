@@ -57,9 +57,9 @@ const u32 CAN_YAW = 48;
 const u32 CAN_AX = 49;
 const u32 CAN_AY = 50;
 const u32 CAN_AZ = 51;
-const u32 CAN_LIN_ACCEL = 51;
-const u32 CAN_ROLL_GRADIENT = 51;
-const u32 CAN_DISTANCE = 51;
-const u32 CAN_GYX = 51;
+const u32 CAN_LIN_ACCEL = 52;
+const u32 CAN_ROLL_GRADIENT = 53;
+const u32 CAN_DISTANCE = 54;
+const u32 CAN_GYX = 55;
 
 #endif

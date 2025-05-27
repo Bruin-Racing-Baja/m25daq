@@ -3,7 +3,7 @@
 #include <can_bus.h>
 #include <string>
 
-FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16>  Can_Bus::flexcan_bus;
+FlexCAN_T4<CAN3, RX_SIZE_256, TX_SIZE_16>  Can_Bus::flexcan_bus;
 
 Can_Bus::Can_Bus()
 {
